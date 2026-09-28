@@ -11,7 +11,7 @@ From this checkout:
 makepkg -si
 ```
 
-After publication on the AUR:
+From [the AUR](https://aur.archlinux.org/packages/pen-dev-bin):
 
 ```sh
 yay -S pen-dev-bin
