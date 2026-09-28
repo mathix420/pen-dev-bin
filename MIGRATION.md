@@ -1,10 +1,11 @@
-# AUR merge request — draft, not submitted
+# AUR merge request — submitted, awaiting review
 
 Replacement published: https://aur.archlinux.org/packages/pen-dev-bin
 
 Version 1.2.14-1 is live under maintainer `mathix`. Both architecture builds
 passed locally and in GitHub Actions. Desktop UI launch has not been tested.
-The merge request has not been submitted.
+The maintainer confirmed submission of the merge request on 2026-09-28.
+Acceptance has not yet been verified.
 
 - Request page: https://aur.archlinux.org/pkgbase/pencil-dev-bin/request
 - Type: merge
