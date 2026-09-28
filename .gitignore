@@ -1,0 +1,7 @@
+src/
+pkg/
+*.pkg.tar.*
+Pen-*.tar.gz
+Pen-*.AppImage
+__pycache__/
+aur-repo/

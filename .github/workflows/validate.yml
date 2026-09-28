@@ -1,0 +1,17 @@
+name: Validate package
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test release updater
+        run: python3 -m unittest discover -s tests -v
+      - name: Validate metadata and build on Arch Linux
+        run: bash scripts/validate.sh

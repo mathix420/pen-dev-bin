@@ -1,0 +1,68 @@
+name: Auto-update AUR package
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+  repository_dispatch:
+    types: [new-version]
+permissions:
+  contents: write
+concurrency:
+  group: auto-update-aur
+  cancel-in-progress: false
+env:
+  COMMIT_NAME: Arnaud Gissinger
+  COMMIT_EMAIL: agissing@student.42.fr
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: master
+      - name: Detect stable release and update checksums
+        id: update
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/update.py
+      - name: Regenerate .SRCINFO
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD":/pkg:ro archlinux:base-devel bash -c '
+            set -euo pipefail
+            useradd -m builder
+            cp -a /pkg /tmp/build
+            chown -R builder:builder /tmp/build
+            su builder -c "cd /tmp/build && makepkg --printsrcinfo"
+          ' > .SRCINFO.new
+          mv .SRCINFO.new .SRCINFO
+      - name: Validate and build
+        if: steps.update.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/validate.sh
+      - name: Commit version bump
+        run: |
+          set -euo pipefail
+          git config user.name "$COMMIT_NAME"
+          git config user.email "$COMMIT_EMAIL"
+          git add PKGBUILD .SRCINFO
+          if ! git diff --cached --quiet; then
+            version=$(sed -n 's/^pkgver=//p' PKGBUILD)
+            git commit -m "Update Pen to $version"
+            git push origin HEAD:master
+          fi
+      # Always reconcile AUR, including when an earlier publication failed
+      # after its GitHub commit, and when initially bootstrapping the package.
+      - name: Publish to AUR
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          AUR_KNOWN_HOSTS: ${{ vars.AUR_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          : "${AUR_SSH_PRIVATE_KEY:?Set the AUR_SSH_PRIVATE_KEY repository secret}"
+          : "${AUR_KNOWN_HOSTS:?Set AUR_KNOWN_HOSTS to the verified AUR SSH host keys}"
+          install -dm700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          printf '%s\n' "$AUR_KNOWN_HOSTS" > ~/.ssh/aur_known_hosts
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/aur_known_hosts"
+          bash scripts/publish.sh
